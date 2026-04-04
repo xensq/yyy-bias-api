@@ -21,9 +21,11 @@ def dte(exp_str):
     except Exception:
         return 0
 
-def calculate_gex(n_exp=3):
+def calculate_gex(n_exp=3, ticker="SPX"):
     try:
-        spx = yf.Ticker("^SPX")
+        _map = {"SPX": "^SPX", "NDX": "^NDX", "SPY": "SPY", "QQQ": "QQQ"}
+        _sym = _map.get(ticker, "^SPX")
+        spx = yf.Ticker(_sym)
         hist = spx.history(period="2d", interval="5m")
         if hist.empty:
             return {"error": "no price data"}
