@@ -40,8 +40,8 @@ async def bias():
             "macro": {"walcl": walcl, "reserves_rrp": reserves_rrp, "oas": oas, "auctions": auctions}}
 
 @app.get("/gex")
-async def gex_route():
-    return await run(calculate_gex)
+async def gex_route(ticker: str = "SPX"):
+    return await run(calculate_gex, 3, ticker)
 
 @app.get("/macro")
 async def macro_route():
