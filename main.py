@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import asyncio
@@ -9,7 +9,9 @@ from engine.gex import calculate_gex
 from engine.macro import get_walcl, get_reserves_rrp, get_oas, get_auctions
 from engine.scorer import score
 from engine.iv import get_iv_surface
+from engine.iv_surface import get_iv_surface as get_iv_surface_3d
 from engine.outlook import generate_outlook
+from engine.history import get_chart_data
 
 executor = ThreadPoolExecutor(max_workers=10)
 
@@ -51,6 +53,10 @@ async def macro_route():
 async def iv_route():
     return await run(get_iv_surface)
 
+@app.get("/iv_surface")
+async def iv_surface_route(ticker: str = Query(default="SPX")):
+    return await run(get_iv_surface_3d, ticker)
+
 @app.get("/outlook")
 async def outlook_route():
     topology, entropy = await asyncio.gather(run(calculate_topology), run(calculate_entropy))
@@ -59,5 +65,8 @@ async def outlook_route():
     gex = await run(calculate_gex)
     result = score(topology, entropy, walcl, reserves_rrp, oas, gex, auctions)
     macro = {"walcl": walcl, "reserves_rrp": reserves_rrp, "oas": oas, "auctions": auctions}
-    outlook = await run(generate_outlook, macro, result, topology, entropy)
-    return outlook
+    return await run(generate_outlook, macro, result, topology, entropy)
+
+@app.get("/history")
+async def history_route():
+    return await run(get_chart_data)

@@ -1,94 +1,55 @@
-import numpy as np
-import pandas as pd
 import yfinance as yf
+import numpy as np
 from datetime import datetime
 
-# In-memory baseline — stores opening IV for the day
-# First call sets the baseline, subsequent calls compute Net IV = current - baseline
-_baseline: dict = {}
-_baseline_date: str = ""
+TICKER_MAP = {
+    "SPX": "^SPX", "NDX": "^NDX", "SPY": "SPY", "QQQ": "QQQ"
+}
 
-
-def _fetch_chains():
-    spx = yf.Ticker("^SPX")
-    hist = spx.history(period="2d", interval="5m")
-    if hist.empty:
-        return None, None
-    spot = float(hist["Close"].iloc[-1])
-    exps = spx.options[:14]  # pull up to 14 expirations
-    rows = {}  # {strike: {exp: mid_iv}}
-    for exp in exps:
-        try:
-            chain = spx.option_chain(exp)
-            calls = chain.calls[["strike", "impliedVolatility", "openInterest"]].copy()
-            puts  = chain.puts[["strike",  "impliedVolatility", "openInterest"]].copy()
-            calls["iv"] = pd.to_numeric(calls["impliedVolatility"], errors="coerce")
-            puts["iv"]  = pd.to_numeric(puts["impliedVolatility"],  errors="coerce")
-            calls = calls[(calls["strike"] >= spot * 0.93) & (calls["strike"] <= spot * 1.07)]
-            puts  = puts[ (puts["strike"]  >= spot * 0.93) & (puts["strike"]  <= spot * 1.07)]
-            merged = pd.merge(
-                calls[["strike", "iv", "openInterest"]].rename(columns={"iv": "call_iv", "openInterest": "call_oi"}),
-                puts[["strike",  "iv", "openInterest"]].rename(columns={"iv": "put_iv",  "openInterest": "put_oi"}),
-                on="strike", how="outer"
-            )
-            for _, row in merged.iterrows():
-                s = float(row["strike"])
-                call_iv = float(row["call_iv"]) if pd.notna(row["call_iv"]) else None
-                put_iv  = float(row["put_iv"])  if pd.notna(row["put_iv"])  else None
-                if call_iv is not None and put_iv is not None:
-                    mid = (call_iv + put_iv) / 2
-                elif call_iv is not None:
-                    mid = call_iv
-                elif put_iv is not None:
-                    mid = put_iv
-                else:
-                    continue
-                call_oi = float(row["call_oi"]) if pd.notna(row["call_oi"]) else 0
-                put_oi  = float(row["put_oi"])  if pd.notna(row["put_oi"])  else 0
-                # only include strikes with some open interest
-                if call_oi + put_oi < 10:
-                    continue
-                if s not in rows:
-                    rows[s] = {}
-                rows[s][exp] = round(mid * 100, 3)  # as percentage
-        except Exception:
-            continue
-    return spot, rows, exps
-
-
-def get_iv_surface():
-    global _baseline, _baseline_date
+def get_iv_surface(ticker="SPX"):
     try:
-        result = _fetch_chains()
-        if result is None or result[0] is None:
-            return {"error": "could not fetch options data"}
-        spot, current_ivs, exps = result
-        today = datetime.now().strftime("%Y-%m-%d")
-        # Reset baseline each new day
-        if _baseline_date != today or not _baseline:
-            _baseline = {s: dict(exps_dict) for s, exps_dict in current_ivs.items()}
-            _baseline_date = today
-        # Build Net IV table: current - baseline
-        all_strikes = sorted(set(current_ivs.keys()) | set(_baseline.keys()), reverse=True)
-        all_exps = list(exps)
-        table = []
-        for strike in all_strikes:
-            row = {"strike": int(strike), "values": {}}
-            for exp in all_exps:
-                curr = current_ivs.get(strike, {}).get(exp)
-                base = _baseline.get(strike, {}).get(exp)
-                if curr is not None and base is not None:
-                    net = round(curr - base, 2)
-                    row["values"][exp] = net
-                else:
-                    row["values"][exp] = None
-            table.append(row)
-        return {
-            "spot": round(spot, 2),
-            "expirations": all_exps,
-            "table": table,
-            "baseline_time": _baseline_date,
-            "error": None
-        }
+        sym = TICKER_MAP.get(ticker.upper(), ticker)
+        t = yf.Ticker(sym)
+        hist = t.history(period="2d")
+        if hist.empty:
+            return {"error": "no price data"}
+        spot = float(hist["Close"].iloc[-1])
+        exps = t.options
+        if not exps:
+            return {"error": "no options"}
+
+        points = []
+        today = datetime.now()
+        atm_ivs = []
+
+        for exp in exps[:8]:  # max 8 expirations
+            try:
+                dte = max((datetime.strptime(exp, "%Y-%m-%d") - today).days, 0)
+                if dte > 60:
+                    continue
+                chain = t.option_chain(exp)
+                for side in [chain.calls, chain.puts]:
+                    for _, row in side.iterrows():
+                        strike = float(row["strike"])
+                        iv = float(row["impliedVolatility"]) if row["impliedVolatility"] else 0
+                        oi = float(row.get("openInterest", 0) or 0)
+                        moneyness = round(strike / spot, 4)
+                        if iv <= 0 or iv > 5 or oi < 10:
+                            continue
+                        if moneyness < 0.8 or moneyness > 1.2:
+                            continue
+                        if abs(moneyness - 1.0) < 0.02:
+                            atm_ivs.append(iv)
+                        points.append({
+                            "strike": round(strike, 0),
+                            "dte": int(dte),
+                            "iv": round(float(iv), 4),
+                            "moneyness": round(float(moneyness), 4)
+                        })
+            except Exception:
+                continue
+
+        atm_iv = float(np.median(atm_ivs)) if atm_ivs else 0.0
+        return {"points": points, "spot": round(spot, 2), "atm_iv": round(atm_iv, 4), "error": None}
     except Exception as e:
         return {"error": str(e)}
