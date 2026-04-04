@@ -56,7 +56,7 @@ def get_probability(ticker="SPX"):
         # For each day, compute probability density across price grid
         n_forward = 5
         n_price = 60
-        price_range = spot * 0.08  # ±8%
+        price_range = spot * sigma * (5 ** 0.5) * 3.5  # ±3.5σ at day 5
         price_grid = np.linspace(spot - price_range, spot + price_range, n_price)
 
         heatmap = []
