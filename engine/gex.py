@@ -76,8 +76,8 @@ def calculate_gex(n_exp=3):
             pain.append(cp + pp)
         max_pain = float(strikes[int(np.argmin(pain))]) if pain else spot
         net_total = float(gdf["net"].sum())
-        above = bool(spot > vol_trigger)
-        pos = bool(net_total > 0)
+        above = bool(float(spot) > float(vol_trigger))
+        pos = bool(float(net_total) > 0)
 
         # Per-strike data for butterfly chart
         all_strikes = sorted(set(ca["strike"].tolist()) | set(pa["strike"].tolist()))
