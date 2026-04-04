@@ -71,8 +71,8 @@ def calculate_topology():
         mom_factor = 1.0 if aligned else 0.5
         return {
             "pca1": round(pca1, 3), "pca2": round(pca2, 3), "vol_z": round(vol_z, 3),
-            "regime": regime, "dist": round(dist, 3), "aligned": aligned,
-            "size_factor": round(dist_factor * mom_factor, 2), "dist_factor": dist_factor,
+            "regime": regime, "dist": round(dist, 3), "aligned": bool(aligned),
+            "size_factor": round(dist_factor * mom_factor, 2), "dist_factor": float(dist_factor),
             "price": round(float(df["Close"].iloc[-1]), 2), "error": None,
         }
     except Exception as e:
