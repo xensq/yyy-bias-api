@@ -89,10 +89,10 @@ def calculate_gex(n_exp=3):
             put_o  = float(pa[pa["strike"] == s]["oi"].sum()) if s in pa["strike"].values else 0.0
             strike_data.append({
                 "strike": round(float(s), 0),
-                "call_gex": round(call_g / 1e9, 4),
-                "put_gex": round(put_g / 1e9, 4),
-                "call_oi": round(call_o, 0),
-                "put_oi": round(put_o, 0),
+                "call_gex": round(float(call_g) / 1e9, 4),
+                "put_gex": round(float(put_g) / 1e9, 4),
+                "call_oi": round(float(call_o), 0),
+                "put_oi": round(float(put_o), 0),
             })
 
         return {
