@@ -74,6 +74,7 @@ async def history_route():
 from engine.net_iv import get_net_iv, snapshot_iv
 from engine.zero_dte import get_zero_dte
 from engine.probability import get_probability
+from engine.flow import get_flow
 from engine.dealer_delta import get_dealer_delta
 
 @app.get("/net_iv")
@@ -87,6 +88,10 @@ async def snapshot_route(ticker: str = "SPX"):
 @app.get("/probability")
 async def probability_route(ticker: str = "SPX"):
     return await run(get_probability, ticker)
+
+@app.get("/flow")
+async def flow_route(ticker: str = "SPX"):
+    return await run(get_flow, ticker)
 
 @app.get("/zero_dte")
 async def zero_dte_route(ticker: str = "SPX"):
