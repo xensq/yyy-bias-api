@@ -70,3 +70,14 @@ async def outlook_route():
 @app.get("/history")
 async def history_route():
     return await run(get_chart_data)
+
+from engine.net_iv import get_net_iv, snapshot_iv
+
+@app.get("/net_iv")
+async def net_iv_route(ticker: str = "SPX"):
+    return get_net_iv(ticker)
+
+@app.get("/snapshot_iv")
+async def snapshot_route(ticker: str = "SPX"):
+    return snapshot_iv(ticker)
+
