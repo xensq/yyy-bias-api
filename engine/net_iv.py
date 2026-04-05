@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from engine.iv import get_iv_surface
 
-STORE = Path("/tmp/net_iv_history.json")
+STORE = Path(os.environ.get("DATA_DIR", "/tmp")) / "net_iv_history.json"
 
 def _load() -> dict:
     if STORE.exists():

@@ -22,7 +22,7 @@ async def lifespan(app: FastAPI):
     executor.shutdown(wait=False)
 
 app = FastAPI(lifespan=lifespan)
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET"], allow_headers=["*"])
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET", "POST", "PUT", "DELETE"], allow_headers=["*"])
 
 async def run(fn, *args):
     return await asyncio.get_event_loop().run_in_executor(executor, fn, *args)
