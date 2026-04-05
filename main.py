@@ -1,3 +1,4 @@
+from engine.expected_move import get_expected_move
 from engine.bias_history import log_bias, set_outcome, get_history
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -119,3 +120,7 @@ async def bias_log_outcome(entry_id: str, outcome: str = Query(...), notes: str 
 async def bias_log_get():
     return get_history()
 
+
+@app.get("/expected_move")
+async def expected_move_route(ticker: str = Query(default="SPX")):
+    return await run(get_expected_move, ticker)
