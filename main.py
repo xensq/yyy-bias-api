@@ -1,3 +1,4 @@
+from engine.bias_history import log_bias, set_outcome, get_history
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -100,4 +101,21 @@ async def zero_dte_route(ticker: str = "SPX"):
 @app.get("/dealer_delta")
 async def dealer_delta_route(ticker: str = "SPX"):
     return await run(get_dealer_delta, ticker)
+
+
+@app.post("/bias_log")
+async def bias_log_save():
+    topology, entropy = await asyncio.gather(run(calculate_topology), run(calculate_entropy))
+    gex, walcl, reserves_rrp, oas, auctions = await asyncio.gather(
+        run(calculate_gex), run(get_walcl), run(get_reserves_rrp), run(get_oas), run(get_auctions))
+    result = score(topology, entropy, walcl, reserves_rrp, oas, gex, auctions)
+    return log_bias(result, topology, entropy, gex)
+
+@app.put("/bias_log/{entry_id}/outcome")
+async def bias_log_outcome(entry_id: str, outcome: str = Query(...), notes: str = Query(default="")):
+    return set_outcome(entry_id, outcome, notes)
+
+@app.get("/bias_log")
+async def bias_log_get():
+    return get_history()
 
