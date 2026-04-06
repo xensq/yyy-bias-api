@@ -19,7 +19,7 @@ def get_dealer_delta(ticker="SPX"):
     try:
         sym = TICKER_MAP.get(ticker.upper(), "^SPX")
         t = yf.Ticker(sym)
-        hist = t.history(period="2d", interval="5m")
+        hist = t.history(period="5d")
         if hist.empty:
             return {"error": "no price data"}
         spot = float(hist["Close"].iloc[-1])
