@@ -1,3 +1,4 @@
+from engine.keys import VALID_KEYS
 from engine.expected_move import get_expected_move
 from engine.bias_history import log_bias, set_outcome, get_history
 from fastapi import FastAPI, Query
@@ -124,3 +125,10 @@ async def bias_log_get():
 @app.get("/expected_move")
 async def expected_move_route(ticker: str = Query(default="SPX")):
     return await run(get_expected_move, ticker)
+
+@app.post("/validate-key")
+async def validate_key(payload: dict):
+    key = payload.get("key", "").strip().upper()
+    if key in VALID_KEYS:
+        return {"valid": True}
+    return {"valid": False}

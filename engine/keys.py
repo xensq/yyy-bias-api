@@ -1,0 +1,12 @@
+VALID_KEYS = {
+    "YYY-K9M2X7",
+    "YYY-R4N8Q1",
+    "YYY-T7W3L5",
+    "YYY-H2B6P9",
+    "YYY-X5C1F8",
+    "YYY-M3J7D4",
+    "YYY-V9G2N6",
+    "YYY-Z4S8K3",
+    "YYY-Q1R5W7",
+    "YYY-A6E9T2",
+}
