@@ -3,55 +3,54 @@ import numpy as np
 from datetime import datetime
 from engine.iv_surface import get_iv_surface
 
-def get_expected_move(ticker="SPX"):
+def get_expected_move(ticker: str = "SPX"):
+    import math
+    surface = get_iv_surface(ticker)
+    if surface.get("error"):
+        return {"error": surface["error"]}
+
+    spot = surface["spot"]
+    points = surface["points"]
+    if not points:
+        return {"error": "no options data"}
+
+    # Get VIX
     try:
-        surface = get_iv_surface(ticker)
-        if surface.get("error"):
-            vix_move_pts = round(spot * (vix / 100) * _math.sqrt(1/252), 2) if vix else None
+        vix = float(yf.Ticker("^VIX").fast_info["lastPrice"])
+    except:
+        vix = None
+
+    # ATM IV buckets
+    def bucket_iv(min_dte, max_dte):
+        bucket = [p["iv"] for p in points if min_dte <= p["dte"] <= max_dte and abs(p["strike"] - spot) / spot < 0.03]
+        if not bucket:
+            return None
+        iv = float(np.median(bucket))
+        days = (min_dte + max_dte) / 2
+        move_pct = round(iv * math.sqrt(days / 252) * 100, 2)
+        move_pts = round(spot * iv * math.sqrt(days / 252), 2)
+        return {"iv": round(iv * 100, 2), "move_pct": move_pct, "move_pts": move_pts,
+                "upper": round(spot + move_pts, 2), "lower": round(spot - move_pts, 2)}
+
+    # VIX daily move
+    vix_move_pts = round(spot * (vix / 100) * math.sqrt(1 / 252), 2) if vix else None
     vix_upper = round(spot + vix_move_pts, 2) if vix_move_pts else None
     vix_lower = round(spot - vix_move_pts, 2) if vix_move_pts else None
-    return {"error": surface["error"]}
-        spot = surface["spot"]
-        points = surface["points"]
-        if not points:
-            vix_move_pts = round(spot * (vix / 100) * _math.sqrt(1/252), 2) if vix else None
-    vix_upper = round(spot + vix_move_pts, 2) if vix_move_pts else None
-    vix_lower = round(spot - vix_move_pts, 2) if vix_move_pts else None
-    return {"error": "no options data"}
-        buckets = {"1d": [], "1w": [], "1m": []}
-        for p in points:
-            dte = p["dte"]
-            mon = p["moneyness"]
-            iv = p["iv"]
-            if abs(mon - 1.0) > 0.03:
-                continue
-            if dte <= 2:
-                buckets["1d"].append(iv)
-            elif dte <= 9:
-                buckets["1w"].append(iv)
-            elif dte <= 35:
-                buckets["1m"].append(iv)
-        def sigma(ivs, days):
-            if not ivs:
-                return None
-            atm = float(np.median(ivs))
-            move = spot * atm * np.sqrt(days / 252)
-            vix_move_pts = round(spot * (vix / 100) * _math.sqrt(1/252), 2) if vix else None
-    vix_upper = round(spot + vix_move_pts, 2) if vix_move_pts else None
-    vix_lower = round(spot - vix_move_pts, 2) if vix_move_pts else None
-    return {"iv": round(atm * 100, 2), "move_pts": round(move, 2), "move_pct": round(atm * np.sqrt(days / 252) * 100, 2), "upper": round(spot + move, 2), "lower": round(spot - move, 2)}
-        moves = {"1d": sigma(buckets["1d"], 1), "1w": sigma(buckets["1w"], 5), "1m": sigma(buckets["1m"], 21)}
-        atm_iv = surface.get("atm_iv", 0)
-        for label, days in [("1d", 1), ("1w", 5), ("1m", 21)]:
-            if moves[label] is None and atm_iv > 0:
-                move = spot * atm_iv * np.sqrt(days / 252)
-                moves[label] = {"iv": round(atm_iv * 100, 2), "move_pts": round(move, 2), "move_pct": round(atm_iv * np.sqrt(days / 252) * 100, 2), "upper": round(spot + move, 2), "lower": round(spot - move, 2)}
-        vix_move_pts = round(spot * (vix / 100) * _math.sqrt(1/252), 2) if vix else None
-    vix_upper = round(spot + vix_move_pts, 2) if vix_move_pts else None
-    vix_lower = round(spot - vix_move_pts, 2) if vix_move_pts else None
-    return {"ticker": ticker, "spot": spot, "atm_iv": round(atm_iv * 100, 2), "moves": moves, "error": None}
-    except Exception as e:
-        vix_move_pts = round(spot * (vix / 100) * _math.sqrt(1/252), 2) if vix else None
-    vix_upper = round(spot + vix_move_pts, 2) if vix_move_pts else None
-    vix_lower = round(spot - vix_move_pts, 2) if vix_move_pts else None
-    return {"error": str(e)}
+
+    atm = [p["iv"] for p in points if abs(p["strike"] - spot) / spot < 0.02]
+    atm_iv = round(float(np.median(atm)) * 100, 2) if atm else None
+
+    return {
+        "ticker": ticker,
+        "spot": spot,
+        "atm_iv": atm_iv,
+        "vix": round(vix, 2) if vix else None,
+        "vix_move_pts": vix_move_pts,
+        "vix_upper": vix_upper,
+        "vix_lower": vix_lower,
+        "moves": {
+            "1d": bucket_iv(1, 2),
+            "1w": bucket_iv(3, 9),
+            "1m": bucket_iv(10, 35),
+        }
+    }
