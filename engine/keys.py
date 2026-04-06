@@ -1,3 +1,4 @@
+# valid keys
 VALID_KEYS = {
     "YYY-U5KL-U9PU",
     "YYY-1900-2PPZ",
