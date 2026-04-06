@@ -1,3 +1,4 @@
+import signal
 import yfinance as yf
 import numpy as np
 from datetime import datetime
@@ -17,6 +18,8 @@ def _bs_delta(S, K, T, sigma, is_call=True):
 
 def get_dealer_delta(ticker="SPX"):
     try:
+        signal.signal(signal.SIGALRM, lambda s,f: (_ for _ in ()).throw(TimeoutError()))
+        signal.alarm(25)
         sym = TICKER_MAP.get(ticker.upper(), "^SPX")
         t = yf.Ticker(sym)
         hist = t.history(period="5d")
@@ -152,5 +155,9 @@ def get_dealer_delta(ticker="SPX"):
             "strike_data": strike_details,
             "error": None
         }
+    except TimeoutError:
+        signal.alarm(0)
+        return {"error": "dealer delta timed out — options chain too slow"}
     except Exception as e:
+        signal.alarm(0)
         return {"error": str(e)}
